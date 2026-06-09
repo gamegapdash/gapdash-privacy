@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Squad Challenge Phase 1 — Hướng dẫn test API cho QC</title>
+  <style>
+    :root {
+      --bg: #f5f7fa;
+      --surface: #fff;
+      --surface2: #eef2f6;
+      --text: #1a2332;
+      --muted: #5c6b7a;
+      --accent: #1971c2;
+      --border: #dee2e6;
+      --pass: #2f9e44;
+      --fail: #e03131;
+      --warn: #862e00;
+      --warn-bg: #fff9db;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.55;
+      color: var(--text);
+      background: var(--bg);
+    }
+    .layout {
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      min-height: 100vh;
+    }
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+      nav.toc { position: static; height: auto; border-right: none; border-bottom: 1px solid var(--border); }
+    }
+    nav.toc {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 1.25rem 1rem;
+      font-size: 0.85rem;
+    }
+    nav.toc h2 {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+      margin: 0 0 0.75rem;
+    }
+    nav.toc a {
+      display: block;
+      color: var(--text);
+      text-decoration: none;
+      padding: 0.3rem 0.5rem;
+      border-radius: 4px;
+      margin-bottom: 0.15rem;
+    }
+    nav.toc a:hover { background: var(--surface2); color: var(--accent); }
+    nav.toc .sub { padding-left: 0.75rem; font-size: 0.82rem; color: var(--muted); }
+    main {
+      padding: 1.5rem 2rem 3rem;
+      max-width: 920px;
+    }
+    header.page-header {
+      margin-bottom: 2rem;
+      padding-bottom: 1.25rem;
+      border-bottom: 2px solid var(--border);
+    }
+    header.page-header h1 { margin: 0 0 0.5rem; font-size: 1.65rem; }
+    header.page-header p { margin: 0.25rem 0; color: var(--muted); font-size: 0.92rem; }
+    .meta-row { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem; }
+    .badge {
+      display: inline-block;
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 0.2rem 0.55rem;
+      border-radius: 999px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+    }
+    .badge.phase { background: #e7f5ff; border-color: #74c0fc; color: var(--accent); }
+    section { margin-bottom: 2.5rem; scroll-margin-top: 1rem; }
+    section > h2 {
+      font-size: 1.25rem;
+      margin: 0 0 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+    section > h3 { font-size: 1.05rem; margin: 1.5rem 0 0.75rem; }
+    .hint, .warn, .ok {
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      font-size: 0.88rem;
+      margin: 1rem 0;
+    }
+    .hint { background: #e7f5ff; border: 1px solid #74c0fc; color: #1864ab; }
+    .warn { background: var(--warn-bg); border: 1px solid #ffe066; color: var(--warn); }
+    .ok { background: #ebfbee; border: 1px solid #8ce99a; color: #2b8a3e; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+      margin: 0.75rem 0 1rem;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.5rem 0.65rem;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: var(--surface2); font-weight: 600; }
+    .api-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      margin-bottom: 1.25rem;
+      overflow: hidden;
+    }
+    .api-card-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.85rem 1rem;
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+    }
+    .method {
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      color: #fff;
+      min-width: 3.2rem;
+      text-align: center;
+    }
+    .method.get { background: #2f9e44; }
+    .method.post { background: #f76707; }
+    .api-path { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.88rem; word-break: break-all; }
+    .api-card-body { padding: 1rem; }
+    .field-label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      color: var(--muted);
+      margin: 0.85rem 0 0.35rem;
+    }
+    .field-label:first-child { margin-top: 0; }
+    pre, code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.82rem;
+    }
+    pre {
+      background: #1a2332;
+      color: #e9ecef;
+      padding: 0.75rem 1rem;
+      border-radius: 6px;
+      overflow-x: auto;
+      margin: 0.35rem 0 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .checklist { list-style: none; padding: 0; margin: 0.5rem 0; }
+    .checklist li {
+      padding: 0.35rem 0 0.35rem 1.6rem;
+      position: relative;
+      font-size: 0.9rem;
+    }
+    .checklist li::before {
+      content: "☐";
+      position: absolute;
+      left: 0;
+      color: var(--muted);
+    }
+    .flow-step {
+      display: flex;
+      gap: 0.75rem;
+      margin-bottom: 0.5rem;
+      align-items: flex-start;
+    }
+    .flow-num {
+      flex-shrink: 0;
+      width: 1.6rem;
+      height: 1.6rem;
+      background: var(--accent);
+      color: #fff;
+      border-radius: 50%;
+      font-size: 0.78rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .status-pass { color: var(--pass); font-weight: 600; }
+    .status-fail { color: var(--fail); font-weight: 600; }
+    .status-expected { color: var(--muted); font-weight: 600; }
+    footer {
+      margin-top: 2rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+  </style>
+</head>
+<body>
+<div class="layout">
+
+<nav class="toc">
+  <h2>Mục lục</h2>
+  <a href="#overview">Tổng quan</a>
+  <a href="#setup">Chuẩn bị Postman</a>
+  <a href="#variables">Biến môi trường</a>
+  <a href="#flows">Luồng test</a>
+  <a href="#auth">A. Auth (Setup)</a>
+  <a class="sub" href="#auth-guest-host">Guest Login — Host</a>
+  <a class="sub" href="#auth-guest-member">Guest Login — Member</a>
+  <a class="sub" href="#auth-me">GET /users/me</a>
+  <a href="#squad">B. Squad APIs</a>
+  <a class="sub" href="#api-create">POST Create Squad</a>
+  <a class="sub" href="#api-detail">GET Squad Detail</a>
+  <a class="sub" href="#api-invite">POST Invite</a>
+  <a class="sub" href="#api-accept">POST Accept</a>
+  <a class="sub" href="#api-decline">POST Decline</a>
+  <a class="sub" href="#api-join">POST Join by Code</a>
+  <a class="sub" href="#api-start">POST Start Session</a>
+  <a class="sub" href="#api-active">GET Active Session</a>
+  <a class="sub" href="#api-runs">POST Submit Run</a>
+  <a class="sub" href="#api-leaderboard">GET Leaderboard</a>
+  <a class="sub" href="#api-history">GET History List</a>
+  <a class="sub" href="#api-history-detail">GET History Detail</a>
+  <a href="#scenarios">C. Kịch bản test</a>
+  <a href="#negative">D. Negative tests</a>
+  <a href="#troubleshoot">E. Troubleshooting</a>
+</nav>
+
+<main>
+
+<header class="page-header">
+  <h1>Squad Challenge — Phase 1 API QC Guide</h1>
+  <p>Hướng dẫn test từng API bằng Postman. Dành cho QC verify backend Phase 1 trước khi tích hợp client.</p>
+  <div class="meta-row">
+    <span class="badge phase">Phase 1 — Backend API</span>
+    <span class="badge">Prefix: /api</span>
+    <span class="badge">Auth: Bearer JWT</span>
+    <span class="badge">Collection: documentation/postman/</span>
+  </div>
+</header>
+
+<section id="overview">
+  <h2>Tổng quan</h2>
+  <p><strong>Squad Challenge</strong> là chế độ đua nhóm bất đồng bộ (tối đa 5 người). Host tạo squad, mời thành viên, bắt đầu phiên có thời hạn; mỗi người chơi độc lập và nộp điểm; khi hết giờ server chốt bảng xếp hạng.</p>
+
+  <table>
+    <thead>
+      <tr><th>Trạng thái squad</th><th>Ý nghĩa</th><th>API liên quan</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>waiting</code></td><td>Đang chờ thành viên, chưa start</td><td>Invite, Accept, Join by code, Start</td></tr>
+      <tr><td><code>active</code></td><td>Phiên đang chạy</td><td>Submit run, Leaderboard, Active session</td></tr>
+      <tr><td><code>completed</code></td><td>Phiên đã kết thúc</td><td>History list, History detail</td></tr>
+      <tr><td><code>expired</code></td><td>Hết hạn 24h ở trạng thái waiting</td><td>Join/Start bị từ chối</td></tr>
+    </tbody>
+  </table>
+
+  <div class="hint">
+    <strong>Phạm vi Phase 1:</strong> Chỉ test API backend. Chưa có UI client, push notification (Phase 2+).
+    Guest account được phép tạo/join squad.
+  </div>
+</section>
+
+<section id="setup">
+  <h2>Chuẩn bị Postman</h2>
+  <ol>
+    <li>Import 2 file trong thư mục <code>documentation/postman/</code>:
+      <ul>
+        <li><code>GapDash-Squad-Challenge.postman_collection.json</code></li>
+        <li><code>GapDash-Squad-Challenge.postman_environment.json</code></li>
+      </ul>
+    </li>
+    <li>Chọn environment <strong>Gap Dash — Dev (Squad)</strong> (góc trên phải Postman).</li>
+    <li>Sửa biến <code>baseUrl</code> — ví dụ staging/prod: <code>https://prod-game.gapdasher.com</code> (không có <code>/</code> cuối).</li>
+    <li>Đặt <code>hostDeviceId</code> và <code>memberDeviceId</code> là 2 chuỗi <strong>khác nhau</strong>, chưa dùng trước đó nếu reset env.</li>
+    <li>Chạy folder <strong>00 Setup — Auth</strong> trước mọi test Squad.</li>
+  </ol>
+  <p>Chi tiết thêm: <code>documentation/postman/POSTMAN_SETUP.md</code></p>
+</section>
+
+<section id="variables">
+  <h2>Biến môi trường Postman</h2>
+  <table>
+    <thead>
+      <tr><th>Biến</th><th>Ai set?</th><th>Dùng cho</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>baseUrl</code></td><td>QC manual</td><td>Tất cả request</td></tr>
+      <tr><td><code>hostDeviceId</code></td><td>QC manual</td><td>Guest login host</td></tr>
+      <tr><td><code>memberDeviceId</code></td><td>QC manual</td><td>Guest login member</td></tr>
+      <tr><td><code>hostToken</code></td><td>Auto (Setup 1)</td><td>Host APIs — Bearer header</td></tr>
+      <tr><td><code>memberToken</code></td><td>Auto (Setup 2)</td><td>Member APIs — Bearer header</td></tr>
+      <tr><td><code>hostGuestToken</code></td><td>Auto (Setup 1, lần đầu)</td><td>Login lại cùng device_id</td></tr>
+      <tr><td><code>memberGuestToken</code></td><td>Auto (Setup 2, lần đầu)</td><td>Login lại cùng device_id</td></tr>
+      <tr><td><code>memberUserId</code></td><td>Auto (Setup 3)</td><td>Body invite <code>user_id</code></td></tr>
+      <tr><td><code>squadId</code></td><td>Auto (Create Squad)</td><td>URL squad endpoints</td></tr>
+      <tr><td><code>inviteCode</code></td><td>Auto (Create Squad)</td><td>Join by code</td></tr>
+      <tr><td><code>sessionId</code></td><td>Auto (Start Session)</td><td>History detail</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="flows">
+  <h2>Luồng test khuyến nghị</h2>
+
+  <h3>Luồng chính — Happy Path (bắt buộc pass)</h3>
+  <div class="flow-step"><span class="flow-num">0</span><span><strong>00 Setup</strong> — Guest login host + member, lấy <code>memberUserId</code></span></div>
+  <div class="flow-step"><span class="flow-num">1</span><span><strong>Create Squad</strong> → lưu <code>squadId</code>, <code>inviteCode</code></span></div>
+  <div class="flow-step"><span class="flow-num">2</span><span><strong>Get Squad Detail</strong> — status <code>waiting</code></span></div>
+  <div class="flow-step"><span class="flow-num">3</span><span><strong>Invite Member</strong> (host token) — <code>user_id: memberUserId</code></span></div>
+  <div class="flow-step"><span class="flow-num">4</span><span><strong>Accept Invite</strong> (member token)</span></div>
+  <div class="flow-step"><span class="flow-num">5</span><span><strong>Start Session</strong> (host) — lưu <code>sessionId</code>, status <code>active</code></span></div>
+  <div class="flow-step"><span class="flow-num">6</span><span><strong>Get Active Session</strong> — <code>active</code> không null</span></div>
+  <div class="flow-step"><span class="flow-num">7–8</span><span><strong>Submit Run</strong> host + member</span></div>
+  <div class="flow-step"><span class="flow-num">9</span><span><strong>Leaderboard</strong> — host rank #1 (distance cao hơn trong collection)</span></div>
+  <div class="flow-step"><span class="flow-num">10</span><span><strong>History List</strong> — có thể <code>items: []</code> nếu session chưa completed</span></div>
+  <div class="flow-step"><span class="flow-num">11</span><span><strong>History Detail</strong> — chỉ pass sau khi session <code>completed</code> (xem mục API)</span></div>
+
+  <div class="warn">
+    <strong>Lưu ý thứ tự:</strong> Folder <strong>03 Join by Code</strong> phải chạy trên squad mới ở trạng thái <code>waiting</code>, <em>không</em> chạy sau Happy Path đã Start Session (sẽ 400).
+  </div>
+</section>
+
+<section id="auth">
+  <h2>A. Auth — Setup (tiên quyết)</h2>
+  <p>Tất cả Squad API yêu cầu header: <code>Authorization: Bearer &lt;accessToken&gt;</code></p>
+
+  <div class="api-card" id="auth-guest-host">
+    <div class="api-card-header">
+      <span class="method post">POST</span>
+      <span class="api-path">/api/auth/guest-login</span>
+    </div>
+    <div class="api-card-body">
+      <p><strong>Mục đích:</strong> Tạo hoặc đăng nhập lại guest host. Collection: <em>1. Guest Login — Host</em></p>
+      <div class="field-label">Headers</div>
+      <pre>Content-Type: application/json</pre>
+      <div class="field-label">Body — guest mới (device_id chưa tồn tại trên server)</div>
+      <pre>{
+  "device_id": "{{hostDeviceId}}"
+}</pre>
+      <div class="field-label">Body — guest cũ (device_id đã tồn tại)</div>
+      <pre>{
+  "device_id": "{{hostDeviceId}}",
+  "guest_token": "{{hostGuestToken}}"
+}</pre>
+      <div class="field-label">Response thành công</div>
+      <table>
+        <tr><th>HTTP</th><th>Trường hợp</th></tr>
+        <tr><td class="status-pass">201</td><td>Guest mới — có thêm <code>guest_token</code></td></tr>
+        <tr><td class="status-pass">200</td><td>Guest cũ — chỉ có <code>accessToken</code>, <code>refreshToken</code></td></tr>
+      </table>
+      <pre>{
+  "success": true,
+  "email": "...@guest.gapdash.local",
+  "accessToken": "eyJ...",
+  "refreshToken": "eyJ...",
+  "guest_token": "eyJ..."   // chỉ lần tạo mới
+}</pre>
+      <div class="field-label">Tiêu chí pass</div>
+      <ul class="checklist">
+        <li>Status 200 hoặc 201</li>
+        <li><code>accessToken</code> được lưu vào <code>hostToken</code></li>
+        <li>Lần đầu: <code>guest_token</code> lưu vào <code>hostGuestToken</code></li>
+      </ul>
+      <div class="field-label">Lỗi thường gặp</div>
+      <table>
+        <tr><th>HTTP</th><th>Message</th><th>Nguyên nhân</th></tr>
+        <tr><td>401</td><td>guest_token required for returning guest</td><td>Device_id cũ nhưng đã xóa <code>hostGuestToken</code> → đổi <code>hostDeviceId</code> mới</td></tr>
+        <tr><td>401</td><td>Invalid guest token</td><td><code>guest_token</code> sai hoặc hết hạn</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="api-card" id="auth-guest-member">
+    <div class="api-card-header">
+      <span class="method post">POST</span>
+      <span class="api-path">/api/auth/guest-login</span>
+    </div>
+    <div class="api-card-body">
+      <p><strong>Mục đích:</strong> Guest thứ 2 (member). Collection: <em>2. Guest Login — Member</em>. Logic giống host, dùng <code>memberDeviceId</code> / <code>memberGuestToken</code> / <code>memberToken</code>.</p>
+      <div class="field-label">Tiêu chí pass</div>
+      <ul class="checklist">
+        <li>Status 200 hoặc 201</li>
+        <li><code>memberToken</code> được lưu</li>
+        <li><code>memberDeviceId</code> khác <code>hostDeviceId</code></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="api-card" id="auth-me">
+    <div class="api-card-header">
+      <span class="method get">GET</span>
+      <span class="api-path">/api/users/me</span>
+    </div>
+    <div class="api-card-body">
+      <p><strong>Mục đích:</strong> Lấy <code>id</code> của member để invite. Collection: <em>3. Get Member Profile</em></p>
+      <div class="field-label">Auth</div>
+      <pre>Authorization: Bearer {{memberToken}}</pre>
+      <div class="field-label">Response mẫu</div>
+      <pre>{
+  "id": "377",
+  "full_name": "Guestabc123",
+  "email": "...",
+  "league": "beginner",
+  "gem": 0,
+  "level": 1,
+  "fuel_cell": 100
+}</pre>
+      <div class="warn"><strong>Quan trọng:</strong> Response <em>không</em> có <code>public_id</code>. Invite phải dùng <code>user_id</code> (giá trị <code>id</code>), không dùng username/public_id trừ khi biết <code>full_name</code>.</div>
+      <div class="field-label">Tiêu chí pass</div>
+      <ul class="checklist">
+        <li>Status 200</li>
+        <li><code>memberUserId</code> = giá trị field <code>id</code></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="squad">
+  <h2>B. Squad APIs</h2>
+  <p>Base path: <code>{{baseUrl}}/api/squads</code>. Tất cả endpoint dưới đây (trừ auth) cần Bearer token.</p>
+
+  <div class="api-card" id="api-create">
+    <div class="api-card-header">
+      <span class="method post">POST</span>
+      <span class="api-path">/api/squads</span>
+    </div>
+    <div class="api-card-body">
+      <p><strong>Mục đích:</strong> Host tạo squad mới. Collection: <em>1. Create Squad</em></p>
+      <div class="field-label">Auth</div>
+      <pre>Authorization: Bearer {{hostToken}}</pre>
+      <div class="field-label">Body</div>
+      <pre>{
+  "name": "Postman Test Squad",       // bắt buộc, max 30 ký tự
+  "avatar_id": 1,                     // optional
+  "duration_minutes": 15,             // bắt buộc: 15 | 30 | 60 | 120
+  "map": "japan",                     // bắt buộc, max 50 ký tự
+  "difficulty": "EASY"                // optional: EASY | MEDIUM | HARD
+}</pre>
+      <div class="field-label">Response thành công — 200/201</div>
+      <pre>{
+  "squad": {
+    "id": "uuid...",
+    "name": "Postman Test Squad",
+    "status": "waiting",
+    "invite_code": "ABC123",          // 6 ký tự, auto-save inviteCode
+    "max_members": 5,
+    "duration_minutes": 15,
+    "map": "japan",
+    "host_user_id": "...",
+    "expires_at": "..."               // +24h từ lúc tạo
+  },
+  "members": [ ... ],                 // host đã accepted
+  "session": null
+}</pre>
+      <div class="field-label">Tiêu chí pass</div>
+      <ul class="checklist">
+        <li>Status 200 hoặc 201</li>
+        <li><code>squad.status</code> = <code>waiting</code></li>
+        <li><code>squad.id</code> và <code>squad.invite_code</code> được lưu env</li>
+        <li>Host có trong <code>members</code> với <code>status: accepted</code>, <code>is_host: true</code></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="api-card" id="api-detail">
+    <div class="api-card-header">
+      <span class="method get">GET</span>
+      <span class="api-path">/api/squads/:id</span>
+    </div>
+    <div class="api-card-body">
+      <p><strong>Mục đích:</strong> Xem chi tiết squad. Collection: <em>2. Get Squad Detail</em></p>
+      <div class="field-label">URL</div>
+      <pre>{{baseUrl}}/api/squads/{{squadId}}</pre>
+      <div class="field-label">Auth</div>
+      <pre>Authorization: Bearer {{hostToken}}</pre>
+      <div class="field-label">Tiêu chí pass</div>
+      <ul class="checklist">
+        <li>Status 200</li>
+        <li><code>squad.status</code> = <code>waiting</code> (trước Start)</li>
+        <li><code>session</code> = null (chưa start)</li>
+      </ul>
+      <div class="field-label">Lỗi</div>
+      <table>
+        <tr><th>HTTP</th><th>Message</th></tr>
+        <tr><td>404</td><td>Squad not found</td></tr>
+        <tr><td>403</td><td>You are not a member of this squad</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="api-card" id="api-invite">
+    <div class="api-card-header">
+      <span class="method post">POST</span>
+      <span class="api-path">/api/squads/:id/invite</span>
+    </div>
+    <div class="api-card-body">
+      <p><strong>Mục đích:</strong> Host mời user vào squad. Collection: <em>3. Invite Member</em></p>
+      <div class="field-label">Auth</div>
+      <pre>Authorization: Bearer {{hostToken}}</pre>
+      <div class="field-label">Body (khuyến nghị)</div>
+      <pre>{ "user_id": "{{memberUserId}}" }</pre>
+      <div class="field-label">Body (thay thế)</div>
+      <pre>{ "username": "Guestabc123" }   // public_id hoặc full_name</pre>
+      <div class="field-label">Điều kiện</div>
+      <ul>
+        <li>Chỉ <strong>host</strong> được gọi</li>
+        <li>Squad phải <code>waiting</code></li>
+        <li>Tối đa 5 thành viên (accepted + invited)</li>
+      </ul>
+      <div class="field-label">Tiêu chí pass</div>
+      <ul class="checklist">
+        <li>Status 200/201</li>
+        <li>Member xuất hiện trong response với <code>status: invited</code></li>
+      </ul>
+      <div class="field-label">Lỗi</div>
+      <table>
+        <tr><th>HTTP</th><th>Message</th></tr>
+        <tr><td>400</td><td>user_id or username is required</td></tr>
+        <tr><td>404</td><td>User not found</td></tr>
+        <tr><td>400</td><td>Cannot invite yourself</td></tr>
+        <tr><td>400</td><td>User is already in this squad</td></tr>
+        <tr><td>403</td><td>Only the host can perform this action</td></tr>
+        <tr><td>400</td><td>Squad is not in waiting status</td></tr>
+        <tr><td>400</td><td>Squad is full</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="api-card" id="api-accept">
+    <div class="api-card-header">
+      <span class="method post">POST</span>
+      <span class="api-path">/api/squads/:id/accept</span>
+    </div>
+    <div class="api-card-body">
+      <p><strong>Mục đích:</strong> Member chấp nhận lời mời. Collection: <em>4. Accept Invite (member)</em></p>
+      <div class="field-label">Auth</div>
+      <pre>Authorization: Bearer {{memberToken}}</pre>
+      <div class="field-label">Body</div>
+      <p>Không có body.</p>
+      <div class="field-label">Tiêu chí pass</div>
+      <ul class="checklist">
+        <li>Status 200/201</li>
+        <li>Member có <code>status: accepted</code>, <code>joined_at</code> có giá trị</li>
+        <li>Ít nhất 2 member accepted (host + member) — đủ điều kiện Start</li>
+      </ul>
+      <div class="field-label">Lỗi</div>
+      <table>
+        <tr><th>HTTP</th><th>Message</th></tr>
+        <tr><td>400</td><td>No pending invite for this squad</td></tr>
+        <tr><td>400</td><td>Squad is not in waiting status</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="api-card" id="api-decline">
+    <div class="api-card-header">
+      <span class="method post">POST</span>
+      <span class="api-path">/api/squads/:id/decline</span>
+    </div>
+    <div class="api-card-body">
+      <p><strong>Mục đích:</strong> Member từ chối lời mời. <em>Chưa có trong collection mặc định — test manual nếu cần.</em></p>
+      <div class="field-label">Auth</div>
+      <pre>Authorization: Bearer {{memberToken}}</pre>
+      <div class="field-label">Response thành công</div>
+      <pre>{ "success": true }</pre>
+      <div class="field-label">Tiêu chí pass</div>
+      <ul class="checklist">
+        <li>Status 200</li>
+        <li><code>success: true</code></li>
+        <li>Gọi lại Get Detail — member <code>status: declined</code></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="api-card" id="api-join">
+    <div class="api-card-header">
+      <span class="method post">POST</span>
+      <span class="api-path">/api/squads/join/:code</span>
+    </div>
+    <div class="api-card-body">
+      <p><strong>Mục đích:</strong> Member tự join bằng mã invite (không qua invite API). Collection: folder <em>03 Alternate — Join by Code</em></p>
+      <div class="field-label">URL</div>
+      <pre>{{baseUrl}}/api/squads/join/{{inviteCode}}</pre>
+      <div class="field-label">Auth</div>
+      <pre>Authorization: Bearer {{memberToken}}</pre>
+      <div class="field-label">Điều kiện</div>
+      <ul>
+        <li>Squad <code>waiting</code>, chưa hết <code>expires_at</code></li>
+        <li>Chưa Start Session</li>
+        <li>Member chưa là thành viên accepted</li>
+      </ul>
+      <div class="field-label">Tiêu chí pass</div>
+      <ul class="checklist">
+        <li>Status 200/201</li>
+        <li>Member <code>status: accepted</code> ngay (không cần Accept)</li>
+      </ul>
+      <div class="warn">
+        <strong>400 Squad is no longer accepting members</strong> — <span class="status-expected">ĐÚNG KỲ VỌNG</span> nếu chạy sau Happy Path đã Start (squad = <code>active</code>).
+      </div>
+      <div class="field-label">Lỗi khác</div>
+      <table>
+        <tr><th>HTTP</th><th>Message</th></tr>
+        <tr><td>404</td><td>Invalid invite code</td></tr>
+        <tr><td>400</td><td>Squad invite has expired</td></tr>
+        <tr><td>400</td><td>Squad is full</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="api-card" id="api-start">
+    <div class="api-card-header">
+      <span class="method post">POST</span>
+      <span class="api-path">/api/squads/:id/start</span>
+    </div>
+    <div class="api-card-body">
+      <p><strong>Mục đích:</strong> Host bắt đầu phiên đua. Collection: <em>5. Start Session (host)</em></p>
+      <div class="field-label">Auth</div>
+      <pre>Authorization: Bearer {{hostToken}}</pre>
+      <div class="field-label">Điều kiện</div>
+      <ul>
+        <li>Chỉ host</li>
+        <li>Squad <code>waiting</code></li>
+        <li>≥ 2 member <code>accepted</code> (host + ít nhất 1 người)</li>
+      </ul>
+      <div class="field-label">Response — session mới</div>
+      <pre>{
+  "squad": { "status": "active", ... },
+  "session": {
+    "id": "...",
+    "status": "active",
+    "started_at": "...",
+    "ended_at": "...",
+    "duration_minutes": 15,
+    "seconds_remaining": 900
+  }
+}</pre>
+      <div class="field-label">Tiêu chí pass</div>
+      <ul class="checklist">
+        <li>Status 200/201</li>
+        <li><code>session.status</code> = <code>active</code></li>
+        <li><code>sessionId</code> được lưu env</li>
+        <li><code>squad.status</code> = <code>active</code></li>
+      </ul>
+      <div class="field-label">Lỗi</div>
+      <table>
+        <tr><th>HTTP</th><th>Message</th></tr>
+        <tr><td>400</td><td>At least 2 accepted members required to start</td></tr>
+        <tr><td>403</td><td>Only the host can perform this action</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="api-card" id="api-active">
+    <div class="api-card-header">
+      <span class="method get">GET</span>
+      <span class="api-path">/api/squads/active</span>
+    </div>
+    <div class="api-card-body">
+      <p><strong>Mục đích:</strong> Lấy phiên đang active của user hiện tại. Collection: <em>6. Get Active Session</em></p>
+      <div class="field-label">Response khi có phiên</div>
+      <pre>{
+  "active": {
+    "squad_id": "...",
+    "squad_name": "...",
+    "session_id": "...",
+    "map": "japan",
+    "duration_minutes": 15,
+    "started_at": "...",
+    "ended_at": "...",
+    "member_count": 2,
+    "seconds_remaining": 850
+  }
+}</pre>
+      <div class="field-label">Response khi không có</div>
+      <pre>{ "active": null }</pre>
+      <div class="field-label">Tiêu chí pass (sau Start)</div>
+      <ul class="checklist">
+        <li>Status 200</li>
+        <li><code>active</code> không null</li>
+        <li><code>session_id</code> khớp <code>sessionId</code> env</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="api-card" id="api-runs">
+    <div class="api-card-header">
+      <span class="method post">POST</span>
+      <span class="api-path">/api/squads/:id/runs</span>
+    </div>
+    <div class="api-card-body">
+      <p><strong>Mục đích:</strong> Nộp kết quả chơi trong phiên active. Collection: <em>7. Submit Run — Host</em>, <em>8. Submit Run — Member</em></p>
+      <div class="field-label">Body</div>
+      <pre>{
+  "distance": 12000,        // bắt buộc, integer > 0
+  "jump_count": 150,        // bắt buộc, >= 0
+  "flying_time": 30,        // bắt buộc, >= 0
+  "gems": 42,               // optional
+  "fuel_cell": 2,           // optional
+  "difficulty": "EASY",     // optional
+  "map": "japan"            // optional, default từ squad
+}</pre>
+      <div class="field-label">Response thành công</div>
+      <pre>{
+  "success": true,
+  "run": {
+    "id": "...",
+    "distance": 12000,
+    "gems": 42,
+    "jump_count": 150,
+    "flying_time": 30,
+    "submitted_at": "..."
+  }
+}</pre>
+      <div class="field-label">Tiêu chí pass</div>
+      <ul class="checklist">
+        <li>Status 200/201, <code>success: true</code></li>
+        <li>Mỗi user chỉ submit <strong>1 lần</strong> / session</li>
+        <li>Host distance &gt; member distance (trong collection) → host rank #1</li>
+      </ul>
+      <div class="field-label">Lỗi</div>
+      <table>
+        <tr><th>HTTP</th><th>Message</th></tr>
+        <tr><td>400</td><td>No active session for this squad</td></tr>
+        <tr><td>400</td><td>Run already submitted for this session</td></tr>
+        <tr><td>400</td><td>Session has ended</td></tr>
+        <tr><td>403</td><td>You must be an accepted squad member</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="api-card" id="api-leaderboard">
+    <div class="api-card-header">
+      <span class="method get">GET</span>
+      <span class="api-path">/api/squads/:id/leaderboard</span>
+    </div>
+    <div class="api-card-body">
+      <p><strong>Mục đích:</strong> Bảng xếp hạng phiên hiện tại. Collection: <em>9. Leaderboard</em></p>
+      <div class="field-label">Response</div>
+      <pre>{
+  "session": { "id": "...", "status": "active", ... },
+  "leaderboard": [
+    {
+      "user_id": "...",
+      "full_name": "...",
+      "public_id": "...",
+      "distance": 12000,
+      "gems": 42,
+      "jump_count": 150,
+      "flying_time": 30,
+      "rank": 1,
+      "submitted": true
+    },
+    {
+      "distance": 0,
+      "rank": 2,
+      "submitted": false    // chưa nộp điểm
+    }
+  ]
+}</pre>
+      <div class="field-label">Quy tắc xếp hạng</div>
+      <p>Distance giảm dần → nếu bằng thì gems → flying_time.</p>
+      <div class="field-label">Tiêu chí pass</div>
+      <ul class="checklist">
+        <li>Status 200</li>
+        <li><code>leaderboard</code> không rỗng</li>
+        <li>Host rank 1 sau khi cả 2 submit (theo body collection)</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="api-card" id="api-history">
+    <div class="api-card-header">
+      <span class="method get">GET</span>
+      <span class="api-path">/api/squads/history?page=1&amp;limit=20</span>
+    </div>
+    <div class="api-card-body">
+      <p><strong>Mục đích:</strong> Danh sách phiên đã hoàn thành của user. Collection: <em>10. History List</em></p>
+      <div class="field-label">Query params</div>
+      <table>
+        <tr><th>Param</th><th>Mặc định</th><th>Ghi chú</th></tr>
+        <tr><td><code>page</code></td><td>1</td><td>≥ 1</td></tr>
+        <tr><td><code>limit</code></td><td>20</td><td>max 50</td></tr>
+      </table>
+      <div class="field-label">Response</div>
+      <pre>{
+  "items": [
+    {
+      "session_id": "...",
+      "squad_id": "...",
+      "squad_name": "...",
+      "map": "japan",
+      "duration_minutes": 15,
+      "ended_at": "...",
+      "your_rank": 1,
+      "your_distance": 12000,
+      "member_count": 2
+    }
+  ],
+  "page": 1,
+  "limit": 20,
+  "total": 1,
+  "total_pages": 1
+}</pre>
+      <div class="field-label">Tiêu chí pass</div>
+      <ul class="checklist">
+        <li>Status 200 luôn pass</li>
+        <li><strong>Trong Happy Path ngay sau Start:</strong> <code>items</code> có thể rỗng — <span class="status-expected">bình thường</span></li>
+        <li>Sau session completed: có ít nhất 1 item</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="api-card" id="api-history-detail">
+    <div class="api-card-header">
+      <span class="method get">GET</span>
+      <span class="api-path">/api/squads/history/:sessionId</span>
+    </div>
+    <div class="api-card-body">
+      <p><strong>Mục đích:</strong> Chi tiết phiên đã kết thúc + full leaderboard. Collection: <em>11. History Detail</em></p>
+      <div class="field-label">Điều kiện</div>
+      <ul>
+        <li>Session phải <code>status: completed</code></li>
+        <li>User phải là member accepted của squad đó</li>
+        <li>Session kết thúc khi: <code>ended_at</code> qua + cron server (~1 phút/lần)</li>
+      </ul>
+      <div class="field-label">Response thành công</div>
+      <pre>{
+  "squad": { ... },
+  "session": { "status": "completed", ... },
+  "leaderboard": [ ... ]
+}</pre>
+      <div class="warn">
+        <strong>404 Session not found</strong> ngay sau Happy Path — <span class="status-expected">ĐÚNG KỲ VỌNG</span> vì session vẫn <code>active</code>. Đợi hết <code>duration_minutes</code> (tối thiểu 15 phút) + ~1 phút rồi test lại.
+      </div>
+      <div class="field-label">Tiêu chí pass (khi đủ thời gian)</div>
+      <ul class="checklist">
+        <li>Status 200</li>
+        <li><code>session.status</code> = <code>completed</code></li>
+        <li>Leaderboard có rank đã chốt</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="scenarios">
+  <h2>C. Kịch bản test — Checklist QC</h2>
+
+  <h3>C1. Happy Path (Pass/Fail bắt buộc)</h3>
+  <table>
+    <thead>
+      <tr><th>#</th><th>Request Postman</th><th>Expected HTTP</th><th>Ghi chú</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>0a</td><td>Guest Login — Host</td><td class="status-pass">200/201</td><td></td></tr>
+      <tr><td>0b</td><td>Guest Login — Member</td><td class="status-pass">200/201</td><td></td></tr>
+      <tr><td>0c</td><td>Get Member Profile</td><td class="status-pass">200</td><td>memberUserId có giá trị</td></tr>
+      <tr><td>1</td><td>Create Squad</td><td class="status-pass">200/201</td><td>squadId, inviteCode saved</td></tr>
+      <tr><td>2</td><td>Get Squad Detail</td><td class="status-pass">200</td><td>status waiting</td></tr>
+      <tr><td>3</td><td>Invite Member</td><td class="status-pass">200/201</td><td></td></tr>
+      <tr><td>4</td><td>Accept Invite</td><td class="status-pass">200/201</td><td>member token</td></tr>
+      <tr><td>5</td><td>Start Session</td><td class="status-pass">200/201</td><td>session active</td></tr>
+      <tr><td>6</td><td>Get Active Session</td><td class="status-pass">200</td><td>active ≠ null</td></tr>
+      <tr><td>7</td><td>Submit Run — Host</td><td class="status-pass">200/201</td><td>success true</td></tr>
+      <tr><td>8</td><td>Submit Run — Member</td><td class="status-pass">200/201</td><td></td></tr>
+      <tr><td>9</td><td>Leaderboard</td><td class="status-pass">200</td><td>host rank 1</td></tr>
+      <tr><td>10</td><td>History List</td><td class="status-pass">200</td><td>items có thể rỗng</td></tr>
+      <tr><td>11</td><td>History Detail</td><td class="status-expected">404 hoặc 200</td><td>404 nếu chưa hết giờ; 200 sau completed</td></tr>
+    </tbody>
+  </table>
+
+  <h3>C2. Join by Code (luồng riêng)</h3>
+  <p>Chạy trên squad <strong>mới</strong>, không qua Invite/Accept/Start:</p>
+  <ol>
+    <li>Setup auth (2 guest)</li>
+    <li>Create Squad (host)</li>
+    <li>Join by Code (member) → <span class="status-pass">200/201</span></li>
+    <li>Start Session → tiếp submit/leaderboard như Happy Path</li>
+  </ol>
+
+  <h3>C3. Regression (optional)</h3>
+  <p>Folder <strong>01 Regression</strong>: <code>GET /users/me</code>, <code>GET /leagues</code>, <code>GET /leagues/leader-board</code> — tất cả 200.</p>
+</section>
+
+<section id="negative">
+  <h2>D. Negative tests (folder 04)</h2>
+  <table>
+    <thead>
+      <tr><th>Request</th><th>Expected HTTP</th><th>Điều kiện</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Start Solo Squad</td><td class="status-fail">400</td><td>Squad chỉ có host, chưa có member thứ 2</td></tr>
+      <tr><td>Member tries Start</td><td class="status-fail">403</td><td>Member gọi start trên squad Happy Path</td></tr>
+      <tr><td>Duplicate submit run</td><td class="status-fail">400</td><td>Host submit lần 2 sau step 7</td></tr>
+      <tr><td>Invalid join code ZZZZZZ</td><td class="status-fail">404</td><td></td></tr>
+      <tr><td>GET active — no auth</td><td class="status-fail">401</td><td></td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="troubleshoot">
+  <h2>E. Troubleshooting</h2>
+  <table>
+    <thead>
+      <tr><th>Triệu chứng</th><th>Nguyên nhân</th><th>Cách xử lý</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>401 guest_token required</td>
+        <td>device_id cũ, env đã reset</td>
+        <td>Đổi hostDeviceId / memberDeviceId sang giá trị mới</td>
+      </tr>
+      <tr>
+        <td>401 trên Squad API</td>
+        <td>JWT hết hạn (~15 phút)</td>
+        <td>Chạy lại Guest Login (cần guest_token nếu device cũ)</td>
+      </tr>
+      <tr>
+        <td>Invite fail, memberUserId trống</td>
+        <td>Chưa chạy Setup step 3</td>
+        <td>GET /users/me với memberToken</td>
+      </tr>
+      <tr>
+        <td>400 At least 2 members</td>
+        <td>Chưa accept invite</td>
+        <td>Chạy Invite + Accept trước Start</td>
+      </tr>
+      <tr>
+        <td>400 Squad no longer accepting</td>
+        <td>Join code sau Start</td>
+        <td>Tạo squad mới hoặc test trước Start</td>
+      </tr>
+      <tr>
+        <td>404 History Detail</td>
+        <td>Session chưa completed</td>
+        <td>Đợi duration_minutes + cron</td>
+      </tr>
+      <tr>
+        <td>502 trên dev URL</td>
+        <td>Dev server down</td>
+        <td>Dùng prod/staging hoặc báo devops</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="ok">
+    <strong>Kết luận Phase 1:</strong> Nếu Happy Path step 1–9 pass và Negative tests pass đúng status code → backend Phase 1 đạt yêu cầu QC API. Step 10–11 và Join by Code phụ thuộc timing/thứ tự như mô tả ở trên.
+  </div>
+</section>
+
+<footer>
+  Gap Dash — Squad Challenge Phase 1 QC Guide · Cập nhật: 2026-05-29 ·
+  Postman: <code>documentation/postman/</code> ·
+  Backend: <code>game_gap_dash_be/src/squad/</code>
+</footer>
+
+</main>
+</div>
+</body>
+</html>
